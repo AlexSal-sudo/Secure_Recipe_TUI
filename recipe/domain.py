@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 import requests
 from typeguard import typechecked
-from typing import Dict, List
 from valid8 import validate
 from validation.regex import pattern
 
@@ -15,7 +14,7 @@ class Title:
     value: str
 
     def __post_init__(self):
-        validate('title', self.value, min_len=1, max_len=30, custom=pattern(r'[a-zA-Z ]*'))
+        validate('title', self.value, min_len=1, max_len=30, custom=pattern(r'[a-zA-Z ]+'))
 
 
 @typechecked
@@ -24,7 +23,7 @@ class User:
     username: str
 
     def __post_init__(self):
-        validate('username', self.username, min_len=3, max_len=20, custom=pattern(r'[a-zA-Z]*'))
+        validate('username', self.username, min_len=3, max_len=20, custom=pattern(r'[a-zA-Z0-9]+'))
 
 
 @typechecked
@@ -33,7 +32,42 @@ class Description:
     value: str
 
     def __post_init__(self):
-        validate('title', self.value, min_len=1, max_len=300, custom=pattern(r'[a-zA-Z \.,;]*'))
+        validate('title', self.value, min_len=1, max_len=300, custom=pattern(r'[a-zA-Z \.,;]+'))
+
+
+@typechecked
+@dataclass(frozen=True, order=True)
+class Name:
+    value: str
+
+    def __post_init__(self):
+        validate('name', self.value, min_len=1, max_len=30, custom=pattern(r'^[a-zA-Z]+$'))
+
+
+@typechecked
+@dataclass(frozen=True, order=True)
+class Quantity:
+    value: int
+
+    def __post_init__(self):
+        validate('quantity', self.value, min_value=1, max_value=1000)
+
+
+@typechecked
+@dataclass(frozen=True)
+class Unit:
+    value: str
+
+    def __post_init__(self):
+        validate('value', self.value, min_len=1, max_len=3, custom=pattern(r'^(g|kg|l|n\/a)$'))
+
+
+@typechecked
+@dataclass(frozen=True)
+class Ingredient:
+    name: Name
+    quantity: Quantity
+    unit: Unit
 
 
 @typechecked
@@ -43,29 +77,58 @@ class Recipe:
     author: User
     description: Description
     created_at: datetime
-    ingredients: Dict
-    steps: List
+    updated_at: datetime
+    ingredients: Ingredient
 
 
 @typechecked
 @dataclass(frozen=True)
 class DealerRecipes:
-    __api_server = 'api/v1/'
+    __api_server = 'https://localhost:8000/api/v1'
 
-    def __login(self, username, password):
-        pass
+    def login(self, username, password):
+        res = requests.post(url=f'{self.__api_server}/auth/login',
+                            data={'username': username, 'password': password})
+        if res.status_code != 200:
+            return None
+        json = res.json()
+        return json['key']
 
-    def __logout(self, key):
-        pass
+    def logout(self, key):
+        res = requests.post(url=f'{self.__api_server}/auth/logout',
+                            headers={'Authorization': f'Token {key}'})
+        if res.status_code == 200:
+            return 'Logged out!'
+        else:
+            return 'Logout failed!'
 
-    def __add_new_recipe(self, key):
-        pass
+    # posso inserire una nuova ricetta solo se sono autenticato
+    def add_new_recipe(self, key, title, description, ingredients):
+        res = requests.post(url=f'{self.__api_server}/recipes', headers={'Authorization': f'Token {key}'},
+                            data={'title': title, 'description': description,
+                                  'ingredients': ingredients})
+        return res.json()
 
-    def __delete_new_recipe(self, key):
-        pass
+    # posso cancellare una ricetta solo se sono un super user
+    def delete_recipe(self, key, index):
+        res = requests.delete(url=f'{self.__api_server}/recipes/{index}', headers={'Authorization': f'Token {key}'},
+                              data={'id': index})
+        if res.status_code != 202:
+            return 'Error during cancellation of the recipe.'
+        else:
+            return 'The recipe is cancelled!'
 
-    def __show_all_recipe(self, key):
-        pass
+    # posso visualizzare tutte le ricette indipendentemente dal login
+    def show_all_recipes(self, key):
+        res = requests.get(url=f'{self.__api_server}/recipes',
+                           headers={'Authorization': f'Token {key}'})
+        if res.status_code != 200:
+            return None
+        return res.json()
 
-    def __show_specific_recipe(self, key, index):
-        pass
+    def show_specific_recipe(self, key, index):
+        res = requests.get(url=f'{self.__api_server}/recipes/{index}',
+                           headers={'Authorization': f'Token {key}'})
+        if res.status_code != 200:
+            return None
+        return res.json()
