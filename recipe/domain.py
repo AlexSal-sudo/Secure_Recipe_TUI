@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, InitVar, field
+from typing import Any, Optional, List, Dict
 
 import requests
 from typeguard import typechecked
@@ -20,10 +21,10 @@ class Title:
 @typechecked
 @dataclass(frozen=True)
 class User:
-    username: str
+    id: int
 
     def __post_init__(self):
-        validate('username', self.username, min_len=3, max_len=20, custom=pattern(r'[a-zA-Z0-9]+'))
+        validate('username', self.id, min_value=0)
 
 
 @typechecked
@@ -32,7 +33,7 @@ class Description:
     value: str
 
     def __post_init__(self):
-        validate('title', self.value, min_len=1, max_len=300, custom=pattern(r'[a-zA-Z \.,;]+'))
+        validate('title', self.value, min_len=1, max_len=500, custom=pattern(r'[a-zA-Z0-9 \n.,;]+'))
 
 
 @typechecked
@@ -57,9 +58,13 @@ class Quantity:
 @dataclass(frozen=True)
 class Unit:
     value: str
+    _my_units = ['kg', 'g', 'l', 'cl', 'ml', 'cup', 'n/a']
 
     def __post_init__(self):
-        validate('value', self.value, min_len=1, max_len=3, custom=pattern(r'^(g|kg|l|n\/a)$'))
+        validate('value', self.value, min_len=1, max_len=3, custom=self._is_a_correct_unit)
+
+    def _is_a_correct_unit(self, value) -> bool:
+        return value in self._my_units
 
 
 @typechecked
@@ -68,6 +73,18 @@ class Ingredient:
     name: Name
     quantity: Quantity
     unit: Unit
+
+    @property
+    def ingredient_name(self):
+        return self.name
+
+    @property
+    def ingredient_quantity(self):
+        return self.quantity
+
+    @property
+    def ingredient_unit(self):
+        return self.unit
 
 
 @typechecked
@@ -78,7 +95,75 @@ class Recipe:
     description: Description
     created_at: datetime
     updated_at: datetime
-    ingredients: Ingredient
+    __ingredients: List[Ingredient] = field(default_factory=list, repr=False, init=False)
+    __map_of_ingredients: Dict[Name, Ingredient] = field(default_factory=dict, repr=False, init=False)
+    create_key: InitVar[Any] = field(default='None')
+
+    def __post_init__(self, create_key: Any):
+        validate('create_key', create_key, custom=Recipe.Builder.is_valid_key)
+
+    def _add_ingredient(self, ingredient: Ingredient, create_key: Any) -> None:
+        validate('create_key', create_key, custom=Recipe.Builder.is_valid_key)
+        validate('ingredient.name', ingredient.name, custom=lambda v: v not in self.__map_of_ingredients)
+        self.__ingredients.append(ingredient)
+        self.__map_of_ingredients[ingredient.name] = ingredient
+
+    def _has_at_least_one_ingredient(self):
+        return len(self.__ingredients) >= 1
+
+    @property
+    def recipe_title(self):
+        return self.title
+
+    @property
+    def recipe_author(self):
+        return self.author
+
+    @property
+    def recipe_description(self):
+        return self.description
+
+    @typechecked
+    @dataclass()
+    class Builder:
+        __recipe: Optional['Recipe']
+        __create_key = object()
+
+        def __init__(self, title: Title, author: User, description: Description, created_at: datetime,
+                     updated_at: datetime):
+            self.__recipe = Recipe(title, author, description, created_at, updated_at, self.__create_key)
+
+        @staticmethod
+        def is_valid_key(key: Any) -> bool:
+            return key == Recipe.Builder.__create_key
+
+        def with_ingredient(self, ingredient: Ingredient) -> 'Recipe.Builder':
+            validate('recipe', self.__recipe)
+            self.__recipe._add_ingredient(ingredient, self.__create_key)
+            return self
+
+        def build(self) -> 'Recipe':
+            validate('recipe', self.__recipe)
+            validate('recipe.ingredients', self.__recipe._has_at_least_one_ingredient(), equals=True)
+            final_recipe, self.__recipe = self.__recipe, None
+            return final_recipe
+
+
+@typechecked
+@dataclass(frozen=True)
+class JsonHandler:
+    @staticmethod
+    def create_ingredients_from_json(ingredient) -> Ingredient:
+        return Ingredient(Name(ingredient['name']), Quantity(ingredient['quantity']), Unit(ingredient['unit']))
+
+    @staticmethod
+    def create_recipe_from_json(json):
+        new_recipe = Recipe.Builder(Title(json['title']), User(json['author']), Description(json['description']),
+                                    json['created_at'], json['updated_at'])
+        for ingredient in json['ingredients']:
+            new_recipe.with_ingredient(JsonHandler.create_ingredients_from_json(ingredient))
+        new_recipe = new_recipe.build()
+        return new_recipe
 
 
 @typechecked
@@ -102,14 +187,12 @@ class DealerRecipes:
         else:
             return 'Logout failed!'
 
-    # posso inserire una nuova ricetta solo se sono autenticato
     def add_new_recipe(self, key, title, description, ingredients):
         res = requests.post(url=f'{self.__api_server}/recipes', headers={'Authorization': f'Token {key}'},
                             data={'title': title, 'description': description,
                                   'ingredients': ingredients})
         return res.json()
 
-    # posso cancellare una ricetta solo se sono un super user
     def delete_recipe(self, key, index):
         res = requests.delete(url=f'{self.__api_server}/recipes/{index}', headers={'Authorization': f'Token {key}'},
                               data={'id': index})
@@ -118,7 +201,6 @@ class DealerRecipes:
         else:
             return 'The recipe is cancelled!'
 
-    # posso visualizzare tutte le ricette indipendentemente dal login
     def show_all_recipes(self, key):
         res = requests.get(url=f'{self.__api_server}/recipes',
                            headers={'Authorization': f'Token {key}'})
