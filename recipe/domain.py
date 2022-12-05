@@ -4,9 +4,9 @@ from typing import Any, Optional, List, Dict
 import requests
 from typeguard import typechecked
 from valid8 import validate
-from validation.regex import pattern
 
-import datetime
+from datetime import date, datetime
+from validation.regex import pattern
 
 
 @typechecked
@@ -15,16 +15,16 @@ class Title:
     value: str
 
     def __post_init__(self):
-        validate('title', self.value, min_len=1, max_len=30, custom=pattern(r'[a-zA-Z ]+'))
+        validate('title', self.value, min_len=1, max_len=30, custom=pattern(r'^[a-zA-Z ]+$'))
 
 
 @typechecked
 @dataclass(frozen=True)
-class User:
+class Id:
     id: int
 
     def __post_init__(self):
-        validate('username', self.id, min_value=0)
+        validate('id', self.id, min_value=0)
 
 
 @typechecked
@@ -33,7 +33,7 @@ class Description:
     value: str
 
     def __post_init__(self):
-        validate('title', self.value, min_len=1, max_len=500, custom=pattern(r'[a-zA-Z0-9 \n.,;]+'))
+        validate('title', self.value, min_len=1, max_len=500, custom=pattern(r'^[a-zA-Z0-9À-ú \'!;\.,\n]+'))
 
 
 @typechecked
@@ -42,7 +42,7 @@ class Name:
     value: str
 
     def __post_init__(self):
-        validate('name', self.value, min_len=1, max_len=30, custom=pattern(r'^[a-zA-Z]+$'))
+        validate('name', self.value, min_len=1, max_len=30, custom=pattern(r'^[a-zA-ZÀ-ú ]+$'))
 
 
 @typechecked
@@ -91,10 +91,10 @@ class Ingredient:
 @dataclass(frozen=True)
 class Recipe:
     title: Title
-    author: User
+    author: Id
     description: Description
-    created_at: datetime
-    updated_at: datetime
+    created_at: date
+    updated_at: Optional['date']
     __ingredients: List[Ingredient] = field(default_factory=list, repr=False, init=False)
     __map_of_ingredients: Dict[Name, Ingredient] = field(default_factory=dict, repr=False, init=False)
     create_key: InitVar[Any] = field(default='None')
@@ -123,14 +123,22 @@ class Recipe:
     def recipe_description(self):
         return self.description
 
+    @property
+    def recipe_created_at(self):
+        return self.created_at
+
+    @property
+    def recipe_update_at(self):
+        return self.updated_at
+
     @typechecked
     @dataclass()
     class Builder:
         __recipe: Optional['Recipe']
         __create_key = object()
 
-        def __init__(self, title: Title, author: User, description: Description, created_at: datetime,
-                     updated_at: datetime):
+        def __init__(self, title: Title, author: Id, description: Description, created_at: date,
+                     updated_at: date):
             self.__recipe = Recipe(title, author, description, created_at, updated_at, self.__create_key)
 
         @staticmethod
@@ -158,10 +166,11 @@ class JsonHandler:
 
     @staticmethod
     def create_recipe_from_json(json):
-        new_recipe = Recipe.Builder(Title(json['title']), User(json['author']), Description(json['description']),
-                                    json['created_at'], json['updated_at'])
+        new_recipe = Recipe.Builder(Title(json['title']), Id(json['author']), Description(json['description']),
+                                    datetime.strptime(json['created_at'], '%Y-%m-%d').date(),
+                                    datetime.strptime(json['updated_at'], '%Y-%m-%d').date())
         for ingredient in json['ingredients']:
-            new_recipe.with_ingredient(JsonHandler.create_ingredients_from_json(ingredient))
+            new_recipe = new_recipe.with_ingredient(JsonHandler.create_ingredients_from_json(ingredient))
         new_recipe = new_recipe.build()
         return new_recipe
 

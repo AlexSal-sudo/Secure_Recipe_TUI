@@ -1,6 +1,6 @@
-import datetime
+from datetime import date
 
-from recipe.domain import User, Recipe, Description, Title, Name, Quantity, Unit, Ingredient
+from recipe.domain import Id, Recipe, Description, Title, Name, Quantity, Unit, Ingredient
 from recipe.domain import JsonHandler
 import pytest
 from valid8 import ValidationError
@@ -9,19 +9,19 @@ from valid8 import ValidationError
 def test_new_user():
     wrong_values = 'abc'
     with pytest.raises(TypeError):
-        User(wrong_values)
+        Id(wrong_values)
 
     wrong_values = -1
     with pytest.raises(ValidationError):
-        User(wrong_values)
+        Id(wrong_values)
 
     correct_values = [1, 12, 123]
     for value in correct_values:
-        assert User(value).id == value
+        assert Id(value).id == value
 
 
 def test_new_name():
-    wrong_values = ['new name', 'new_name', 'newname' * 20]
+    wrong_values = ['new!name', 'new_name', 'newname' * 20]
     for value in wrong_values:
         with pytest.raises(ValidationError):
             Name(value)
@@ -54,7 +54,7 @@ def test_new_unit():
 
 
 def test_new_description():
-    wrong_values = ['This is a new description!', 'This is a new description?',
+    wrong_values = ['This is a new description_', 'This is a new description?',
                     'This is a new description-' * 400]
     for value in wrong_values:
         with pytest.raises(ValidationError):
@@ -81,17 +81,19 @@ def test_new_title():
 
 def test_new_recipe():
     with pytest.raises(TypeError):
-        Recipe.Builder('title', 123, 'description1', datetime.datetime.now(),
-                       datetime.datetime.now()).with_ingredient(Ingredient('name', 10, 'n/a')).build()
+        Recipe.Builder('title', 123, 'description1', date.today(),
+                       date.today()).with_ingredient(Ingredient('name', 10, 'n/a')).build()
     with pytest.raises(TypeError):
-        Recipe.Builder(Title('title'), User(123), Description('description1'), datetime.datetime.now(),
-                       datetime.datetime.now()).with_ingredient(Ingredient('name', 10, 'n/a')).build()
-    new_recipe = Recipe.Builder(Title('title'), User(123), Description('description1'), datetime.datetime.now(),
-                                datetime.datetime.now()).with_ingredient(Ingredient(Name('name'), Quantity(10),
-                                                                                    Unit('n/a'))).build()
+        Recipe.Builder(Title('title'), Id(123), Description('description1'), date.today(),
+                       date.today()).with_ingredient(Ingredient('name', 10, 'n/a')).build()
+    new_recipe = Recipe.Builder(Title('title'), Id(123), Description('description1'), date.today(),
+                                date.today()).with_ingredient(Ingredient(Name('name'), Quantity(10),
+                                                                         Unit('n/a'))).build()
     assert new_recipe.recipe_title.value == 'title'
     assert new_recipe.recipe_author.id == 123
     assert new_recipe.recipe_description.value == 'description1'
+    assert new_recipe.recipe_created_at == date.today()
+    assert new_recipe.recipe_update_at == date.today()
 
 
 @pytest.mark.parametrize('name, quantity, unit', [
@@ -146,8 +148,8 @@ def test_json_converter_recipe():
             'quantity': 1,
             'unit': 'n/a'
         }],
-        'created_at': '2022-12-01T15:15:12.376396Z',
-        'updated_at': '2022-12-01T15:15:12.376396Z',
+        'created_at': '2022-12-01',
+        'updated_at': '2022-12-01',
     }
     new_recipe = JsonHandler.create_recipe_from_json(my_right_json_recipe)
     assert new_recipe.recipe_title.value == 'title'
@@ -160,8 +162,8 @@ def test_json_converter_recipe():
             'quantity': 1,
             'unit': 'n/a'
         }],
-        'created_at': '2022-12-01T15:15:12.376396Z',
-        'updated_at': '2022-12-01T15:15:12.376396Z',
+        'created_at': '2022-12-01',
+        'updated_at': '2022-12-01',
     }
     with pytest.raises(KeyError):
         JsonHandler.create_recipe_from_json(my_wrong_json_recipe)
