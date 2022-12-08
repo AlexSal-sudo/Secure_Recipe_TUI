@@ -83,7 +83,7 @@ def test_delete_recipe(key, index, status_code, result):
         'created_at': '2022-12-01T15:15:12.376396Z',
         'updated_at': '2022-12-01T15:15:12.376396Z',
     }),
-    ('new_token', None)
+    ('new_token', {})
 ])
 def test_show_all_recipe(key, my_result, key_for_tests):
     with requests_mock.Mocker() as m:
@@ -107,7 +107,7 @@ def test_show_all_recipe(key, my_result, key_for_tests):
         'created_at': '2022-12-01T15:15:12.376396Z',
         'updated_at': '2022-12-01T15:15:12.376396Z',
     }),
-    ('my_fake_token', 2, 400, None)
+    ('my_fake_token', 2, 400, {})
 ])
 def test_show_specific_recipe(key, index, status_code, my_result, key_for_tests):
     with requests_mock.Mocker() as m:

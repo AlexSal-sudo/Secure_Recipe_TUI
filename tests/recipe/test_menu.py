@@ -75,6 +75,7 @@ def test_menu_builder_cannot_create_menu_without_exit():
     menu_builder.with_entry(Entry.create('1', 'exit', is_exit=True))
     menu_builder.build()
 
+
 def test_menu_builder_cannot_call_two_times_build():
     menu_builder = Menu.Builder(Description('a description'))
     menu_builder.with_entry(Entry.create('1', 'first entry', is_exit=True))

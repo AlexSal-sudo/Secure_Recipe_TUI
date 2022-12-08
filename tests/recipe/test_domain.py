@@ -1,23 +1,9 @@
 from datetime import date
 
-from recipe.domain import Id, Recipe, Description, Title, Name, Quantity, Unit, Ingredient
+from recipe.domain import Recipe, Description, Title, Name, Quantity, Unit, Ingredient, Password, Username
 from recipe.domain import JsonHandler
 import pytest
 from valid8 import ValidationError
-
-
-def test_new_user():
-    wrong_values = 'abc'
-    with pytest.raises(TypeError):
-        Id(wrong_values)
-
-    wrong_values = -1
-    with pytest.raises(ValidationError):
-        Id(wrong_values)
-
-    correct_values = [1, 12, 123]
-    for value in correct_values:
-        assert Id(value).id == value
 
 
 def test_new_name():
@@ -84,13 +70,13 @@ def test_new_recipe():
         Recipe.Builder('title', 123, 'description1', date.today(),
                        date.today()).with_ingredient(Ingredient('name', 10, 'n/a')).build()
     with pytest.raises(TypeError):
-        Recipe.Builder(Title('title'), Id(123), Description('description1'), date.today(),
+        Recipe.Builder(Title('title'), Username('username'), Description('description1'), date.today(),
                        date.today()).with_ingredient(Ingredient('name', 10, 'n/a')).build()
-    new_recipe = Recipe.Builder(Title('title'), Id(123), Description('description1'), date.today(),
+    new_recipe = Recipe.Builder(Title('title'), Username('username'), Description('description1'), date.today(),
                                 date.today()).with_ingredient(Ingredient(Name('name'), Quantity(10),
                                                                          Unit('n/a'))).build()
     assert new_recipe.recipe_title.value == 'title'
-    assert new_recipe.recipe_author.id == 123
+    assert new_recipe.recipe_author.value == 'username'
     assert new_recipe.recipe_description.value == 'description1'
     assert new_recipe.recipe_created_at == date.today()
     assert new_recipe.recipe_update_at == date.today()
@@ -140,7 +126,7 @@ def test_json_converter_ingredients():
 def test_json_converter_recipe():
     my_right_json_recipe = {
         'id': 1,
-        'author': 1,
+        'author': 'author',
         'title': 'title',
         'description': 'description1',
         'ingredients': [{
@@ -167,3 +153,29 @@ def test_json_converter_recipe():
     }
     with pytest.raises(KeyError):
         JsonHandler.create_recipe_from_json(my_wrong_json_recipe)
+
+
+def test_password():
+    wrong_values = ['This is a password', 'pass',
+                    'This is a password' * 50]
+    for value in wrong_values:
+        with pytest.raises(ValidationError):
+            Password(value)
+
+    correct_values = ['This_is_a_password', 'new_pass',
+                      'password@1234']
+    for value in correct_values:
+        assert Password(value).value == value
+
+
+def test_username():
+    wrong_values = ['This is an username', 'new!username',
+                    'us']
+    for value in wrong_values:
+        with pytest.raises(ValidationError):
+            Username(value)
+
+    correct_values = ['This_is_an_username', 'newUsername',
+                      'username234']
+    for value in correct_values:
+        assert Username(value).value == value

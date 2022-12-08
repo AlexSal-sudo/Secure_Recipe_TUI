@@ -38,6 +38,7 @@ class Entry:
     description: Description
     on_selected: Callable[[], None] = field(default=lambda: None)
     is_exit: bool = field(default=False)
+    is_visible_by_anyone: bool = field(default=False)
 
     @staticmethod
     def create(key: str, description: str, on_selected: Callable[[], None] = lambda: None,

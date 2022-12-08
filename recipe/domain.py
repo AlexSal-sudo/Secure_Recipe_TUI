@@ -29,6 +29,17 @@ class Id:
 
 @typechecked
 @dataclass(frozen=True, order=True)
+class Username:
+    value: str
+
+    def __post_init__(self):
+        # TODO
+        # chiedere se va bene la regex
+        validate('password', self.value, min_len=4, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-\.]+$'))
+
+
+@typechecked
+@dataclass(frozen=True, order=True)
 class Description:
     value: str
 
@@ -91,7 +102,7 @@ class Ingredient:
 @dataclass(frozen=True)
 class Recipe:
     title: Title
-    author: Id
+    author: Username
     description: Description
     created_at: date
     updated_at: Optional['date']
@@ -137,7 +148,7 @@ class Recipe:
         __recipe: Optional['Recipe']
         __create_key = object()
 
-        def __init__(self, title: Title, author: Id, description: Description, created_at: date,
+        def __init__(self, title: Title, author: Username, description: Description, created_at: date,
                      updated_at: date):
             self.__recipe = Recipe(title, author, description, created_at, updated_at, self.__create_key)
 
@@ -166,7 +177,7 @@ class JsonHandler:
 
     @staticmethod
     def create_recipe_from_json(json):
-        new_recipe = Recipe.Builder(Title(json['title']), Id(json['author']), Description(json['description']),
+        new_recipe = Recipe.Builder(Title(json['title']), Username(json['author']), Description(json['description']),
                                     datetime.strptime(json['created_at'], '%Y-%m-%d').date(),
                                     datetime.strptime(json['updated_at'], '%Y-%m-%d').date())
         for ingredient in json['ingredients']:
@@ -211,15 +222,18 @@ class DealerRecipes:
             return 'The recipe is cancelled!'
 
     def show_all_recipes(self, key):
-        res = requests.get(url=f'{self.__api_server}/recipes',
-                           headers={'Authorization': f'Token {key}'})
-        if res.status_code != 200:
-            return None
+        res = requests.get(url=f'{self.__api_server}/recipes', headers={'Authorization': f'Token {key}'})
         return res.json()
 
     def show_specific_recipe(self, key, index):
-        res = requests.get(url=f'{self.__api_server}/recipes/{index}',
-                           headers={'Authorization': f'Token {key}'})
-        if res.status_code != 200:
-            return None
+        res = requests.get(url=f'{self.__api_server}/recipes/{index}', headers={'Authorization': f'Token {key}'})
         return res.json()
+
+
+@typechecked
+@dataclass(frozen=True, order=True)
+class Password:
+    value: str
+
+    def __post_init__(self):
+        validate('password', self.value, min_len=8, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-@#*\.!?]+$'))
