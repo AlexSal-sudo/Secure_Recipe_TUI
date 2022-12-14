@@ -1,6 +1,8 @@
 from datetime import date
+from unittest import mock
+from unittest.mock import patch
 
-from recipe.domain import Recipe, Description, Title, Name, Quantity, Unit, Ingredient, Password, Username
+from recipe.domain import Recipe, Description, Title, Name, Quantity, Unit, Ingredient, Password, Username, Email, Id
 from recipe.domain import JsonHandler
 import pytest
 from valid8 import ValidationError
@@ -67,19 +69,19 @@ def test_new_title():
 
 def test_new_recipe():
     with pytest.raises(TypeError):
-        Recipe.Builder('title', 123, 'description1', date.today(),
+        Recipe.Builder(1, 'title', 123, 'description1', date.today(),
                        date.today()).with_ingredient(Ingredient('name', 10, 'n/a')).build()
     with pytest.raises(TypeError):
-        Recipe.Builder(Title('title'), Username('username'), Description('description1'), date.today(),
+        Recipe.Builder(Id(1), Title('title'), Username('username'), Description('description1'), date.today(),
                        date.today()).with_ingredient(Ingredient('name', 10, 'n/a')).build()
-    new_recipe = Recipe.Builder(Title('title'), Username('username'), Description('description1'), date.today(),
+    new_recipe = Recipe.Builder(Id(1), Title('title'), Username('username'), Description('description1'), date.today(),
                                 date.today()).with_ingredient(Ingredient(Name('name'), Quantity(10),
                                                                          Unit('n/a'))).build()
-    assert new_recipe.recipe_title.value == 'title'
-    assert new_recipe.recipe_author.value == 'username'
-    assert new_recipe.recipe_description.value == 'description1'
-    assert new_recipe.recipe_created_at == date.today()
-    assert new_recipe.recipe_update_at == date.today()
+    assert new_recipe.title.value == 'title'
+    assert new_recipe.author.value == 'username'
+    assert new_recipe.description.value == 'description1'
+    assert new_recipe.created_at == date.today()
+    assert new_recipe.updated_at == date.today()
 
 
 @pytest.mark.parametrize('name, quantity, unit', [
@@ -88,9 +90,9 @@ def test_new_recipe():
 ])
 def test_new_right_ingredient(name, quantity, unit):
     new_ingredient = Ingredient(Name(name), Quantity(quantity), Unit(unit))
-    assert new_ingredient.ingredient_name.value == name
-    assert new_ingredient.ingredient_quantity.value == quantity
-    assert new_ingredient.ingredient_unit.value == unit
+    assert new_ingredient.name.value == name
+    assert new_ingredient.quantity.value == quantity
+    assert new_ingredient.unit.value == unit
 
 
 @pytest.mark.parametrize('name, quantity, unit', [
@@ -118,9 +120,9 @@ def test_json_converter_ingredients():
         JsonHandler.create_ingredients_from_json(my_wrong_json_ingredient)
 
     new_ingredient = JsonHandler.create_ingredients_from_json(my_right_json_ingredient)
-    assert new_ingredient.ingredient_unit.value == 'l'
-    assert new_ingredient.ingredient_quantity.value == 1
-    assert new_ingredient.ingredient_name.value == 'water'
+    assert new_ingredient.unit.value == 'l'
+    assert new_ingredient.quantity.value == 1
+    assert new_ingredient.name.value == 'water'
 
 
 def test_json_converter_recipe():
@@ -138,8 +140,8 @@ def test_json_converter_recipe():
         'updated_at': '2022-12-01',
     }
     new_recipe = JsonHandler.create_recipe_from_json(my_right_json_recipe)
-    assert new_recipe.recipe_title.value == 'title'
-    assert new_recipe.recipe_description.value == 'description1'
+    assert new_recipe.title.value == 'title'
+    assert new_recipe.description.value == 'description1'
 
     my_wrong_json_recipe = {
         'description': 'description1',
@@ -179,3 +181,27 @@ def test_username():
                       'username234']
     for value in correct_values:
         assert Username(value).value == value
+
+
+def test_email():
+    wrong_values = ['secure recipe', 'secure recipe@gmail',
+                    'secure.recipe.it']
+    for value in wrong_values:
+        with pytest.raises(ValidationError):
+            Email(value)
+
+    correct_values = ['secure.recipe@gmail.com', 'secure00recipe@icloud.com',
+                      'secure.recipe00@libero.it']
+    for value in correct_values:
+        assert Email(value).value == value
+
+
+@patch('builtins.print')
+def test_print_recipe(mock_print):
+    new_recipe = Recipe.Builder(Id(1), Title('title'), Username('username'), Description('description1'), date.today(),
+                                date.today()).with_ingredient(Ingredient(Name('name'), Quantity(10),
+                                                                         Unit('n/a'))).build()
+    new_recipe.print()
+    mock_print.assert_any_call('title')
+    mock_print.assert_any_call('Description: description1')
+    mock_print.assert_any_call('Author: username')

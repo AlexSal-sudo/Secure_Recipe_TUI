@@ -38,7 +38,6 @@ class Entry:
     description: Description
     on_selected: Callable[[], None] = field(default=lambda: None)
     is_exit: bool = field(default=False)
-    is_visible_by_anyone: bool = field(default=False)
 
     @staticmethod
     def create(key: str, description: str, on_selected: Callable[[], None] = lambda: None,
@@ -85,7 +84,8 @@ class Menu:
                 entry = self.__key2entry[key]
                 entry.on_selected()
                 return entry.is_exit
-            except (KeyError, TypeError, ValueError):
+            except (KeyError, TypeError, ValueError) as ex:
+                print(ex)
                 print('Invalid selection. Please, try again...')
 
     def run(self) -> None:

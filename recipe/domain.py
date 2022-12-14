@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, InitVar, field
 from typing import Any, Optional, List, Dict
 
@@ -7,6 +8,10 @@ from valid8 import validate
 
 from datetime import date, datetime
 from validation.regex import pattern
+
+
+# TODO
+# inserire messaggi nel validate per spiegare cosa si sta rompendo
 
 
 @typechecked
@@ -33,8 +38,6 @@ class Username:
     value: str
 
     def __post_init__(self):
-        # TODO
-        # chiedere se va bene la regex
         validate('password', self.value, min_len=4, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-\.]+$'))
 
 
@@ -85,30 +88,34 @@ class Ingredient:
     quantity: Quantity
     unit: Unit
 
-    @property
-    def ingredient_name(self):
-        return self.name
-
-    @property
-    def ingredient_quantity(self):
-        return self.quantity
-
-    @property
-    def ingredient_unit(self):
-        return self.unit
-
 
 @typechecked
 @dataclass(frozen=True)
 class Recipe:
+    id: Id
     title: Title
     author: Username
     description: Description
     created_at: date
-    updated_at: Optional['date']
+    updated_at: Optional['date'] = field(default=None)
     __ingredients: List[Ingredient] = field(default_factory=list, repr=False, init=False)
     __map_of_ingredients: Dict[Name, Ingredient] = field(default_factory=dict, repr=False, init=False)
     create_key: InitVar[Any] = field(default='None')
+
+    def print(self) -> None:
+        print('-' * 50)
+        print(self.title.value)
+        print('-' * 50)
+        print(f'Id: {self.id.id}')
+        print(f'Description: {self.description.value}')
+        print(f'Author: {self.author.value}')
+        print(f'Created_at: {self.created_at.__str__()}')
+        if self.updated_at is not None:
+            print(f'Updated_at: {self.updated_at.__str__()}')
+        print('Ingredients:')
+        for ingredient in self.__ingredients:
+            print(f'\t-{ingredient.name.value}: {ingredient.quantity.value} {ingredient.unit.value}')
+        print('')
 
     def __post_init__(self, create_key: Any):
         validate('create_key', create_key, custom=Recipe.Builder.is_valid_key)
@@ -122,35 +129,15 @@ class Recipe:
     def _has_at_least_one_ingredient(self):
         return len(self.__ingredients) >= 1
 
-    @property
-    def recipe_title(self):
-        return self.title
-
-    @property
-    def recipe_author(self):
-        return self.author
-
-    @property
-    def recipe_description(self):
-        return self.description
-
-    @property
-    def recipe_created_at(self):
-        return self.created_at
-
-    @property
-    def recipe_update_at(self):
-        return self.updated_at
-
     @typechecked
     @dataclass()
     class Builder:
         __recipe: Optional['Recipe']
         __create_key = object()
 
-        def __init__(self, title: Title, author: Username, description: Description, created_at: date,
-                     updated_at: date):
-            self.__recipe = Recipe(title, author, description, created_at, updated_at, self.__create_key)
+        def __init__(self, id: Id, title: Title, author: Username, description: Description, created_at: date,
+                     updated_at: date | None):
+            self.__recipe = Recipe(id, title, author, description, created_at, updated_at, self.__create_key)
 
         @staticmethod
         def is_valid_key(key: Any) -> bool:
@@ -177,9 +164,11 @@ class JsonHandler:
 
     @staticmethod
     def create_recipe_from_json(json):
-        new_recipe = Recipe.Builder(Title(json['title']), Username(json['author']), Description(json['description']),
-                                    datetime.strptime(json['created_at'], '%Y-%m-%d').date(),
-                                    datetime.strptime(json['updated_at'], '%Y-%m-%d').date())
+        update_field = None
+        if 'updated_at' in json:
+            update_field = datetime.strptime(json['updated_at'], '%Y-%m-%d').date()
+        new_recipe = Recipe.Builder(Id(json['id']), Title(json['title']), Username(json['author']), Description(json['description']),
+                                    datetime.strptime(json['created_at'], '%Y-%m-%d').date(), update_field)
         for ingredient in json['ingredients']:
             new_recipe = new_recipe.with_ingredient(JsonHandler.create_ingredients_from_json(ingredient))
         new_recipe = new_recipe.build()
@@ -189,44 +178,109 @@ class JsonHandler:
 @typechecked
 @dataclass(frozen=True)
 class DealerRecipes:
-    __api_server = 'https://localhost:8000/api/v1'
+    __api_server = 'http://localhost:8000/api/v1'
+
+    def sign_up(self, username, email, password, confirm_password):
+        my_data = {
+            'username': username,
+            'email': email,
+            'password1': password,
+            'password2': confirm_password
+        }
+        res = requests.post(url=f'{self.__api_server}/auth/registration/', data=my_data)
+        if res.status_code != 201:
+            # TODO
+            # come faccio a restituire direttamente il risultato del json? non so quale campo stampa,
+            # così è più immediato
+            return res.json()
+        else:
+            # TODO
+            # restituisce la chiave ma non lo logga in automatico, lascio così ve?
+            return 'Welcome to Secure Recipe! You are now registered as a new user.'
 
     def login(self, username, password):
-        res = requests.post(url=f'{self.__api_server}/auth/login',
-                            data={'username': username, 'password': password})
+        res = requests.post(url=f'{self.__api_server}/auth/login/', data={'username': username, 'password': password})
         if res.status_code != 200:
             return None
         json = res.json()
         return json['key']
 
     def logout(self, key):
-        res = requests.post(url=f'{self.__api_server}/auth/logout',
-                            headers={'Authorization': f'Token {key}'})
+        res = requests.post(url=f'{self.__api_server}/auth/logout/', headers={'Authorization': f'Token {key}'})
         if res.status_code == 200:
             return 'Logged out!'
         else:
             return 'Logout failed!'
 
     def add_new_recipe(self, key, title, description, ingredients):
-        res = requests.post(url=f'{self.__api_server}/recipes', headers={'Authorization': f'Token {key}'},
-                            data={'title': title, 'description': description,
-                                  'ingredients': ingredients})
+        data = {
+            'title': title,
+            'description': description,
+            'ingredients': ingredients
+        }
+        res = requests.post(url=f'{self.__api_server}/personal-area/', headers={'Authorization': f'Token {key}',
+                                                                                'Content-Type': 'application/json'},
+                            data=json.dumps(data))
         return res.json()
 
     def delete_recipe(self, key, index):
-        res = requests.delete(url=f'{self.__api_server}/recipes/{index}', headers={'Authorization': f'Token {key}'},
+        res = requests.delete(url=f'{self.__api_server}/personal-area/{index}/',
+                              headers={'Authorization': f'Token {key}'},
                               data={'id': index})
-        if res.status_code != 202:
-            return 'Error during cancellation of the recipe.'
+        if res.status_code != 204:
+            return res.json()['detail']
         else:
             return 'The recipe is cancelled!'
 
-    def show_all_recipes(self, key):
-        res = requests.get(url=f'{self.__api_server}/recipes', headers={'Authorization': f'Token {key}'})
+    def show_all_recipes(self):
+        return self.get_request(view=f'/recipes/')
+
+    def show_specific_recipe(self, index):
+        return self.get_request(view=f'/recipes/{index}/')
+
+    def sort_by_title(self):
+        return self.get_request(view='/recipes/sort-by-title/')
+
+    def sort_by_date(self):
+        return self.get_request(view='/recipes/sort-by-date/')
+
+    def sort_my_recipes_by_title(self, key):
+        return self.get_request(view='/personal-area/sort-by-title/', headers={'Authorization': f'Token {key}'})
+
+    def sort_my_recipes_by_date(self, key):
+        return self.get_request(view='/personal-area/sort-by-date/', headers={'Authorization': f'Token {key}'})
+
+    def filter_by_author(self, author):
+        return self.get_request(view=f'/recipes/by-author/{author}/')
+
+    def filter_by_title(self, title):
+        return self.get_request(view=f'/recipes/by-title/{title}/')
+
+    def filter_by_ingredient(self, ingredient):
+        return self.get_request(view=f'/recipes/by-ingredient/{ingredient}/')
+
+    def what_is_my_role(self, key):
+        result = self.get_request(view=f'/personal-area/account-type/', headers={'Authorization': f'Token {key}'})
+        if 'detail' in result:
+            return result['detail']
+        else:
+            if result['type-account'] == 0:
+                return 'You are logged as normal user'
+            elif result['type-account'] == 1:
+                return 'You are logged as admin'
+            else:
+                return 'You are logged as moderator'
+
+    def update_my_recipe(self, key, index, recipe_to_change):
+        res = requests.put(url=f'{self.__api_server}/personal-area/{index}/',
+                           headers={'Authorization': f'Token {key}', 'Content-Type': 'application/json'},
+                           data=json.dumps(recipe_to_change))
         return res.json()
 
-    def show_specific_recipe(self, key, index):
-        res = requests.get(url=f'{self.__api_server}/recipes/{index}', headers={'Authorization': f'Token {key}'})
+    def get_request(self, view, **kwargs):
+        data = kwargs['data'] if 'data' in kwargs else {}
+        headers = kwargs['headers'] if 'headers' in kwargs else {}
+        res = requests.get(url=f'{self.__api_server}{view}', headers=headers, data=data)
         return res.json()
 
 
@@ -236,4 +290,13 @@ class Password:
     value: str
 
     def __post_init__(self):
-        validate('password', self.value, min_len=8, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-@#*\.!?]+$'))
+        validate('password', self.value, min_len=8, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-@#*\.!?$^=+]+$'))
+
+
+@typechecked
+@dataclass(frozen=True, order=True)
+class Email:
+    value: str
+
+    def __post_init__(self):
+        validate('email', self.value, min_len=8, max_len=30, custom=pattern(r'^[a-zA-Z0-9\.]+@[a-z]+\.[a-z]+$'))
