@@ -8,19 +8,6 @@ from domain import DealerRecipes, Title, Description, Name, Quantity, Unit, Pass
 from domain import JsonHandler, Recipe, Email
 from menu import Menu, Entry, Description
 
-# TODO
-# quando tento di modificare una ricetta non mia devo bloccarlo subito?
-
-# TODO
-# se il server è offline devo lanciare un errore particolare? Perché al momento non dice niente, solo che c'è stato un
-# errore durante l'esecuzione
-
-# TODO
-# il not found, il detail, l'invalid token e via dicendo, devo stamparli con la stampa di errore?
-
-# TODO
-# in alcuni casi stampa il not found con l'error e in altri no
-
 
 class ApplicationForUser:
     def __init__(self):
@@ -86,7 +73,10 @@ class ApplicationForUser:
         input_confirm_password: Password = self.__read_from_input('Password', Password, password=True)
         result = self.__dealer.sign_up(input_username.value, input_email.value,
                                        input_password.value, input_confirm_password.value)
-        print(result)
+        if result == 'Welcome to Secure Recipe! You are now registered as a new user.':
+            print(result)
+        else:
+            self.__error(result)
 
     def __login(self):
         if self.__is_logged():
@@ -168,7 +158,7 @@ class ApplicationForUser:
         input_id_to_change: Id = self.__read_from_input('Id', Id, to_convert=True)
         recipe_to_change = self.__dealer.show_specific_recipe(input_id_to_change.id)
         if 'detail' in recipe_to_change:
-            print(recipe_to_change['detail'])
+            self.__error(recipe_to_change['detail'])
             return
         JsonHandler.create_recipe_from_json(recipe_to_change).print()
         title_to_change, description_to_change = '', ''
@@ -195,20 +185,19 @@ class ApplicationForUser:
                                                                        input_quantity, input_unit))
         return ingredients
 
-    @staticmethod
-    def __print_result_from_request(result):
+    def __print_result_from_request(self, result):
         if type(result) is list:
             for r in result:
                 my_recipe = JsonHandler.create_recipe_from_json(r)
                 my_recipe.print()
         else:
             if 'detail' in result:
-                print(result['detail'])
+                self.__error(result['detail'])
             elif 'title' in result:
                 my_recipe = JsonHandler.create_recipe_from_json(result)
                 my_recipe.print()
             else:
-                print(result)
+                self.__error(result)
 
     @staticmethod
     def __error(error_message):

@@ -406,3 +406,19 @@ def test_sign_up(mock_input, mock_print):
             new_app.run()
             mock_print.assert_called()
             mock_read.assert_called()
+
+
+@patch('builtins.input', side_effect=['1'])
+@patch('builtins.print')
+def test_sign_up_with_error(mock_input, mock_print):
+    new_app = ApplicationForUser()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
+                      side_effect=[Username('username'), Email('secure.softare@gmail.com'),
+                                   Password('password1234'), Password('password12345')]) as mock_read:
+        with patch.object(DealerRecipes, 'sign_up',
+                          return_value={'detail': 'error_testing'}):
+            with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
+                new_app.run()
+                mock_error.assert_called()
+                mock_print.assert_called()
+                mock_read.assert_called()

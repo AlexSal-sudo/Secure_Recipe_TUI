@@ -10,17 +10,14 @@ from datetime import date, datetime
 from validation.regex import pattern
 
 
-# TODO
-# inserire messaggi nel validate per spiegare cosa si sta rompendo
-
-
 @typechecked
 @dataclass(frozen=True, order=True)
 class Title:
     value: str
 
     def __post_init__(self):
-        validate('title', self.value, min_len=1, max_len=30, custom=pattern(r'^[a-zA-Z ]+$'))
+        validate('title', self.value, min_len=1, max_len=30, custom=pattern(r'^[a-zA-Z ]+$'),
+                 help_msg='The title is invalid. Check the length or the syntax.')
 
 
 @typechecked
@@ -29,7 +26,7 @@ class Id:
     id: int
 
     def __post_init__(self):
-        validate('id', self.id, min_value=0)
+        validate('id', self.id, min_value=0, help_msg='The id is invalid. Check the value.')
 
 
 @typechecked
@@ -38,7 +35,8 @@ class Username:
     value: str
 
     def __post_init__(self):
-        validate('password', self.value, min_len=4, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-\.]+$'))
+        validate('password', self.value, min_len=4, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-\.]+$'),
+                 help_msg='The username is invalid. Check the length or the syntax.')
 
 
 @typechecked
@@ -47,7 +45,8 @@ class Description:
     value: str
 
     def __post_init__(self):
-        validate('title', self.value, min_len=1, max_len=500, custom=pattern(r'^[a-zA-Z0-9À-ú \'!;\.,\n]+'))
+        validate('title', self.value, min_len=1, max_len=500, custom=pattern(r'^[a-zA-Z0-9À-ú \'!;\.,\n]+'),
+                 help_msg='The description is invalid. Check the length or the syntax.')
 
 
 @typechecked
@@ -56,7 +55,8 @@ class Name:
     value: str
 
     def __post_init__(self):
-        validate('name', self.value, min_len=1, max_len=30, custom=pattern(r'^[a-zA-ZÀ-ú ]+$'))
+        validate('name', self.value, min_len=1, max_len=30, custom=pattern(r'^[a-zA-ZÀ-ú ]+$'),
+                 help_msg='The name is invalid. Check the length or the syntax.')
 
 
 @typechecked
@@ -65,7 +65,8 @@ class Quantity:
     value: int
 
     def __post_init__(self):
-        validate('quantity', self.value, min_value=1, max_value=1000)
+        validate('quantity', self.value, min_value=1, max_value=1000,
+                 help_msg='The quantity is invalid. Check the value.')
 
 
 @typechecked
@@ -75,7 +76,8 @@ class Unit:
     _my_units = ['kg', 'g', 'l', 'cl', 'ml', 'cup', 'n/a']
 
     def __post_init__(self):
-        validate('value', self.value, min_len=1, max_len=3, custom=self._is_a_correct_unit)
+        validate('value', self.value, min_len=1, max_len=3, custom=self._is_a_correct_unit,
+                 help_msg='The unit is invalid. Check the value.')
 
     def _is_a_correct_unit(self, value) -> bool:
         return value in self._my_units
@@ -189,13 +191,8 @@ class DealerRecipes:
         }
         res = requests.post(url=f'{self.__api_server}/auth/registration/', data=my_data)
         if res.status_code != 201:
-            # TODO
-            # come faccio a restituire direttamente il risultato del json? non so quale campo stampa,
-            # così è più immediato
             return res.json()
         else:
-            # TODO
-            # restituisce la chiave ma non lo logga in automatico, lascio così ve?
             return 'Welcome to Secure Recipe! You are now registered as a new user.'
 
     def login(self, username, password):
@@ -290,7 +287,8 @@ class Password:
     value: str
 
     def __post_init__(self):
-        validate('password', self.value, min_len=8, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-@#*\.!?$^=+]+$'))
+        validate('password', self.value, min_len=8, max_len=30, custom=pattern(r'^[a-zA-Z0-9_\-@#*\.!?$^=+]+$'),
+                 help_msg='The password is invalid. Check the length or the syntax.')
 
 
 @typechecked
@@ -299,4 +297,5 @@ class Email:
     value: str
 
     def __post_init__(self):
-        validate('email', self.value, min_len=8, max_len=30, custom=pattern(r'^[a-zA-Z0-9\.]+@[a-z]+\.[a-z]+$'))
+        validate('email', self.value, min_len=8, max_len=30, custom=pattern(r'^[a-zA-Z0-9\.]+@[a-z]+\.[a-z]+$'),
+                 help_msg='The email is invalid. Check the length or the syntax.')
