@@ -102,40 +102,70 @@ def test_add_new_recipe(mock_input):
                                date.today(), date.today())
     my_recipe = my_recipe.with_ingredient(Ingredient(Name('ingredient'), Quantity(1), Unit('n/a'))).build()
     new_app = ApplicationForUser()
-    with patch.object(DealerRecipes, 'add_new_recipe', return_value=my_recipe_json):
-        with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
-                          side_effect=my_side_effects) as mock_read:
-            with patch.object(JsonHandler, 'create_recipe_from_json', return_value=my_recipe):
-                with patch.object(Recipe, 'print') as mock_recipe_print:
-                    new_app.run()
-                    mock_read.assert_called()
-                    mock_recipe_print.assert_called()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=True):
+        with patch.object(DealerRecipes, 'add_new_recipe', return_value=my_recipe_json):
+            with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
+                              side_effect=my_side_effects) as mock_read:
+                with patch.object(JsonHandler, 'create_recipe_from_json', return_value=my_recipe):
+                    with patch.object(Recipe, 'print') as mock_recipe_print:
+                        new_app.run()
+                        mock_read.assert_called()
+                        mock_recipe_print.assert_called()
+
+
+@patch('builtins.input', side_effect=['9'])
+def test_add_new_recipe_return_error(mock_input):
+    new_app = ApplicationForUser()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=False):
+        with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
+            new_app.run()
+            mock_error.assert_called()
+
+
+@patch('builtins.input', side_effect=['10'])
+def test_delete_recipe_return_error(mock_input):
+    new_app = ApplicationForUser()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=False):
+        with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
+            new_app.run()
+            mock_error.assert_called()
+
+
+@patch('builtins.input', side_effect=['14'])
+def test_update_recipe_return_error(mock_input):
+    new_app = ApplicationForUser()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=False):
+        with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
+            new_app.run()
+            mock_error.assert_called()
 
 
 @patch('builtins.input', side_effect=['10', 123])
 @patch('builtins.print')
 def test_right_delete_recipe(mock_print, mock_input):
     new_app = ApplicationForUser()
-    with patch.object(DealerRecipes, 'delete_recipe', return_value='The recipe is cancelled!'):
-        with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
-            with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
-                              return_value=Id(123)) as mock_read:
-                new_app.run()
-                mock_read.assert_called()
-                mock_error.assert_not_called()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=True):
+        with patch.object(DealerRecipes, 'delete_recipe', return_value='The recipe is cancelled!'):
+            with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
+                with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
+                                  return_value=Id(123)) as mock_read:
+                    new_app.run()
+                    mock_read.assert_called()
+                    mock_error.assert_not_called()
 
 
 @patch('builtins.input', side_effect=['10', 123])
 @patch('builtins.print')
 def test_wrong_delete_recipe(mock_print, mock_input):
     new_app = ApplicationForUser()
-    with patch.object(DealerRecipes, 'delete_recipe', return_value='Error during cancellation of the recipe.'):
-        with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
-            with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
-                              return_value=Id(123)) as mock_read:
-                new_app.run()
-                mock_read.assert_called()
-                mock_error.assert_called()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=True):
+        with patch.object(DealerRecipes, 'delete_recipe', return_value='Error during cancellation of the recipe.'):
+            with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
+                with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
+                                  return_value=Id(123)) as mock_read:
+                    new_app.run()
+                    mock_read.assert_called()
+                    mock_error.assert_called()
 
 
 @patch('builtins.input', side_effect=['3'])
@@ -355,43 +385,46 @@ def test_condition_in_print_from_result(mock_print, mock_input):
 @patch('builtins.print')
 def test_update_recipe_wrong(mock_print, mock_input):
     new_app = ApplicationForUser()
-    with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
-                      return_value=Id(123)) as mock_read:
-        with patch.object(DealerRecipes, 'show_specific_recipe', return_value={'detail': 'testing'}):
-            new_app.run()
-            mock_print.assert_called()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=True):
+        with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
+                          return_value=Id(123)) as mock_read:
+            with patch.object(DealerRecipes, 'show_specific_recipe', return_value={'detail': 'testing'}):
+                new_app.run()
+                mock_print.assert_called()
 
 
 @patch('builtins.input', side_effect=['14', 'o', 'y', 'y', 'y', 'n'])
 @patch('builtins.print')
 def test_update_recipe_with_detail(mock_print, mock_input):
     new_app = ApplicationForUser()
-    with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
-                      side_effect=[Id(123), Title('title'), Description('description'), Name('name'),
-                                   Quantity(10), Unit('n/a')]) as mock_read:
-        with patch.object(JsonHandler, 'create_recipe_from_json'):
-            with patch.object(DealerRecipes, 'update_my_recipe', return_value={'detail': 'testing'}):
-                with patch.object(DealerRecipes, 'show_specific_recipe', return_value={'testing': 'testing'}):
-                    new_app.run()
-                    mock_print.assert_called()
-                    mock_read.assert_called()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=True):
+        with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
+                          side_effect=[Id(123), Title('title'), Description('description'), Name('name'),
+                                       Quantity(10), Unit('n/a')]) as mock_read:
+            with patch.object(JsonHandler, 'create_recipe_from_json'):
+                with patch.object(DealerRecipes, 'update_my_recipe', return_value={'detail': 'testing'}):
+                    with patch.object(DealerRecipes, 'show_specific_recipe', return_value={'testing': 'testing'}):
+                        new_app.run()
+                        mock_print.assert_called()
+                        mock_read.assert_called()
 
 
 @patch('builtins.input', side_effect=['14', 'n'])
 @patch('builtins.print')
 def test_update_recipe_with_all_inputs(mock_print, mock_input):
     new_app = ApplicationForUser()
-    with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
-                      side_effect=[Id(123), Title('title'), Description('description'), Name('name'),
-                                   Quantity(10), Unit('n/a')]) as mock_read:
-        with patch.object(ApplicationForUser, '_ApplicationForUser__read_yes_or_not_from_input',
-                          side_effect=['y', 'y', 'y']):
-            with patch.object(JsonHandler, 'create_recipe_from_json'):
-                with patch.object(DealerRecipes, 'update_my_recipe', return_value={'testing': 'testing'}):
-                    with patch.object(DealerRecipes, 'show_specific_recipe', return_value={'testing': 'testing'}):
-                        new_app.run()
-                        mock_print.assert_called()
-                        mock_read.assert_called()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__is_logged', return_value=True):
+        with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
+                          side_effect=[Id(123), Title('title'), Description('description'), Name('name'),
+                                       Quantity(10), Unit('n/a')]) as mock_read:
+            with patch.object(ApplicationForUser, '_ApplicationForUser__read_yes_or_not_from_input',
+                              side_effect=['y', 'y', 'y']):
+                with patch.object(JsonHandler, 'create_recipe_from_json'):
+                    with patch.object(DealerRecipes, 'update_my_recipe', return_value={'testing': 'testing'}):
+                        with patch.object(DealerRecipes, 'show_specific_recipe', return_value={'testing': 'testing'}):
+                            new_app.run()
+                            mock_print.assert_called()
+                            mock_read.assert_called()
 
 
 @patch('builtins.input', side_effect=['1'])

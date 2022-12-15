@@ -7,7 +7,7 @@ from valid8 import ValidationError
 
 from domain import DealerRecipes, Title, Description, Name, Quantity, Unit, Password, Username, Id
 from domain import JsonHandler, Recipe, Email
-from menu import Menu, Entry, Description
+from  menu import Menu, Entry, Description
 
 
 class ApplicationForUser:
@@ -64,7 +64,7 @@ class ApplicationForUser:
                 self.__error(f'Invalid selection.')
 
     def __is_logged(self):
-        return self.__my_key is not ''
+        return self.__my_key != ''
 
     def __what_is_my_role(self):
         return self.__dealer.what_is_my_role(self.__my_key)
@@ -103,6 +103,9 @@ class ApplicationForUser:
             self.__error(result)
 
     def __add_new_recipe(self):
+        if not self.__is_logged():
+            self.__error('You can not perform this action without login.')
+            return
         input_title = self.__read_from_input('Title', Title)
         input_description = self.__read_from_input('Description', Description)
         ingredients = self.__read_ingredients_from_input()
@@ -110,6 +113,9 @@ class ApplicationForUser:
         self.__print_result_from_request(result)
 
     def __delete_recipe(self):
+        if not self.__is_logged():
+            self.__error('You can not perform this action without login.')
+            return
         input_id = self.__read_from_input('Id', Id, to_convert=True)
         result = self.__dealer.delete_recipe(self.__my_key, input_id.id)
         if result == 'The recipe is cancelled!':
@@ -158,6 +164,9 @@ class ApplicationForUser:
         self.__print_result_from_request(result)
 
     def __update_my_recipe(self):
+        if not self.__is_logged():
+            self.__error('You can not perform this action without login.')
+            return
         input_id_to_change: Id = self.__read_from_input('Id', Id, to_convert=True)
         recipe_to_change = self.__dealer.show_specific_recipe(input_id_to_change.id)
         if 'detail' in recipe_to_change:
