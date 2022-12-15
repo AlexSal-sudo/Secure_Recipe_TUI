@@ -126,20 +126,20 @@ def test_show_specific_recipe(index, status_code, my_result, key_for_tests):
 
 
 @pytest.mark.parametrize('key, title, description, ingredients, result', [
-    ('my_fake_token', 'title1', 'description1', {'name': 'ingredientOne', 'quantity': 1, 'unit': 'n/a'}, {
+    ('my_fake_token', 'title1', 'description1', [{'name': 'ingredientOne', 'quantity': 1, 'unit': 'n/a'}], {
         'id': 1,
         'author': 'author1',
         'title': 'title1',
         'description': 'description1',
-        'ingredients': {
+        'ingredients': [{
             'name': 'ingredient1',
             'quantity': 1,
             'unit': 'n/a'
-        },
+        }],
         'created_at': '2022-12-01T15:15:12.376396Z',
         'updated_at': '2022-12-01T15:15:12.376396Z',
     }),
-    ('my_fake_token', 'title1', 'description1', {'name': 'ingredientOne', 'quantity': '1', 'unit': 'k'},
+    ('my_fake_token', 'title1', 'description1', [{'name': 'ingredientOne', 'quantity': '1', 'unit': 'k'}],
      {'ingredients': [" '2' is not a number"]})
 ])
 def test_add_new_recipe(key, title, description, ingredients, result):

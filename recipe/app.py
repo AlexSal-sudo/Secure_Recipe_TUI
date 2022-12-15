@@ -2,6 +2,7 @@ import getpass
 import sys
 from typing import Callable, Any
 
+from typeguard import typechecked
 from valid8 import ValidationError
 
 from domain import DealerRecipes, Title, Description, Name, Quantity, Unit, Password, Username, Id
@@ -34,8 +35,9 @@ class ApplicationForUser:
             .with_entry(Entry.create('0', 'Exit', on_selected=lambda: print('Bye bye!'), is_exit=True)) \
             .build()
         self.__dealer = DealerRecipes()
-        self.__my_key = None
+        self.__my_key = ''
 
+    @typechecked
     def __read_from_input(self, prompt: str, builder: Callable, password: bool = False,
                           to_convert: bool = False) -> Any:
         while True:
@@ -52,6 +54,7 @@ class ApplicationForUser:
             except (TypeError, ValueError, ValidationError) as e:
                 self.__error(f'Invalid {prompt}.\n {e}')
 
+    @typechecked
     def __read_yes_or_not_from_input(self, prompt: str) -> Any:
         while True:
             line = input(f'{prompt}: ').strip()
@@ -61,7 +64,7 @@ class ApplicationForUser:
                 self.__error(f'Invalid selection.')
 
     def __is_logged(self):
-        return self.__my_key is not None
+        return self.__my_key is not ''
 
     def __what_is_my_role(self):
         return self.__dealer.what_is_my_role(self.__my_key)
@@ -95,7 +98,7 @@ class ApplicationForUser:
         result = self.__dealer.logout(self.__my_key)
         if result == 'Logged out!':
             print(result)
-            self.__my_key = None
+            self.__my_key = ''
         else:
             self.__error(result)
 
@@ -163,6 +166,7 @@ class ApplicationForUser:
         JsonHandler.create_recipe_from_json(recipe_to_change).print()
         title_to_change, description_to_change = '', ''
         ingredients_to_change = []
+        print('If you want to do something digit "y", otherwise digit "n".')
         if self.__read_yes_or_not_from_input('Do you want to change the title?') == 'y':
             recipe_to_change['title'] = self.__read_from_input('Title', Title).value
         if self.__read_yes_or_not_from_input('Do you want to change the description?') == 'y':
@@ -185,7 +189,8 @@ class ApplicationForUser:
                                                                        input_quantity, input_unit))
         return ingredients
 
-    def __print_result_from_request(self, result):
+    @typechecked
+    def __print_result_from_request(self, result: Any):
         if type(result) is list:
             for r in result:
                 my_recipe = JsonHandler.create_recipe_from_json(r)
@@ -200,13 +205,15 @@ class ApplicationForUser:
                 self.__error(result)
 
     @staticmethod
-    def __error(error_message):
+    @typechecked
+    def __error(error_message: str):
         print('*** ATTENTION ***')
         print(error_message)
         print('*** ATTENTION ***')
 
     @staticmethod
-    def convert_input_into_json_ingredient(name: Name, quantity: Quantity, unit: Unit):
+    @typechecked
+    def convert_input_into_json_ingredient(name: Name, quantity: Quantity, unit: Unit) -> dict:
         json = {
             'name': name.value,
             'quantity': quantity.value,

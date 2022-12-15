@@ -79,7 +79,8 @@ class Unit:
         validate('value', self.value, min_len=1, max_len=3, custom=self._is_a_correct_unit,
                  help_msg='The unit is invalid. Check the value.')
 
-    def _is_a_correct_unit(self, value) -> bool:
+    @typechecked
+    def _is_a_correct_unit(self, value: str) -> bool:
         return value in self._my_units
 
 
@@ -122,6 +123,7 @@ class Recipe:
     def __post_init__(self, create_key: Any):
         validate('create_key', create_key, custom=Recipe.Builder.is_valid_key)
 
+    @typechecked
     def _add_ingredient(self, ingredient: Ingredient, create_key: Any) -> None:
         validate('create_key', create_key, custom=Recipe.Builder.is_valid_key)
         validate('ingredient.name', ingredient.name, custom=lambda v: v not in self.__map_of_ingredients)
@@ -145,6 +147,7 @@ class Recipe:
         def is_valid_key(key: Any) -> bool:
             return key == Recipe.Builder.__create_key
 
+        @typechecked
         def with_ingredient(self, ingredient: Ingredient) -> 'Recipe.Builder':
             validate('recipe', self.__recipe)
             self.__recipe._add_ingredient(ingredient, self.__create_key)
@@ -161,17 +164,19 @@ class Recipe:
 @dataclass(frozen=True)
 class JsonHandler:
     @staticmethod
-    def create_ingredients_from_json(ingredient) -> Ingredient:
+    @typechecked
+    def create_ingredients_from_json(ingredient: dict) -> Ingredient:
         return Ingredient(Name(ingredient['name']), Quantity(ingredient['quantity']), Unit(ingredient['unit']))
 
     @staticmethod
-    def create_recipe_from_json(json):
+    @typechecked
+    def create_recipe_from_json(_json: dict):
         update_field = None
-        if 'updated_at' in json:
-            update_field = datetime.strptime(json['updated_at'], '%Y-%m-%d').date()
-        new_recipe = Recipe.Builder(Id(json['id']), Title(json['title']), Username(json['author']), Description(json['description']),
-                                    datetime.strptime(json['created_at'], '%Y-%m-%d').date(), update_field)
-        for ingredient in json['ingredients']:
+        if 'updated_at' in _json:
+            update_field = datetime.strptime(_json['updated_at'], '%Y-%m-%d').date()
+        new_recipe = Recipe.Builder(Id(_json['id']), Title(_json['title']), Username(_json['author']), Description(_json['description']),
+                                    datetime.strptime(_json['created_at'], '%Y-%m-%d').date(), update_field)
+        for ingredient in _json['ingredients']:
             new_recipe = new_recipe.with_ingredient(JsonHandler.create_ingredients_from_json(ingredient))
         new_recipe = new_recipe.build()
         return new_recipe
@@ -182,7 +187,8 @@ class JsonHandler:
 class DealerRecipes:
     __api_server = 'http://localhost:8000/api/v1'
 
-    def sign_up(self, username, email, password, confirm_password):
+    @typechecked
+    def sign_up(self, username: str, email: str, password: str, confirm_password: str):
         my_data = {
             'username': username,
             'email': email,
@@ -195,21 +201,24 @@ class DealerRecipes:
         else:
             return 'Welcome to Secure Recipe! You are now registered as a new user.'
 
-    def login(self, username, password):
+    @typechecked
+    def login(self, username: str, password: str):
         res = requests.post(url=f'{self.__api_server}/auth/login/', data={'username': username, 'password': password})
         if res.status_code != 200:
             return None
-        json = res.json()
-        return json['key']
+        _json = res.json()
+        return _json['key']
 
-    def logout(self, key):
+    @typechecked
+    def logout(self, key: str):
         res = requests.post(url=f'{self.__api_server}/auth/logout/', headers={'Authorization': f'Token {key}'})
         if res.status_code == 200:
             return 'Logged out!'
         else:
             return 'Logout failed!'
 
-    def add_new_recipe(self, key, title, description, ingredients):
+    @typechecked
+    def add_new_recipe(self, key: str, title: str, description: str, ingredients: list):
         data = {
             'title': title,
             'description': description,
@@ -220,7 +229,8 @@ class DealerRecipes:
                             data=json.dumps(data))
         return res.json()
 
-    def delete_recipe(self, key, index):
+    @typechecked
+    def delete_recipe(self, key: str, index: int):
         res = requests.delete(url=f'{self.__api_server}/personal-area/{index}/',
                               headers={'Authorization': f'Token {key}'},
                               data={'id': index})
@@ -232,7 +242,8 @@ class DealerRecipes:
     def show_all_recipes(self):
         return self.get_request(view=f'/recipes/')
 
-    def show_specific_recipe(self, index):
+    @typechecked
+    def show_specific_recipe(self, index: int):
         return self.get_request(view=f'/recipes/{index}/')
 
     def sort_by_title(self):
@@ -241,22 +252,28 @@ class DealerRecipes:
     def sort_by_date(self):
         return self.get_request(view='/recipes/sort-by-date/')
 
-    def sort_my_recipes_by_title(self, key):
+    @typechecked
+    def sort_my_recipes_by_title(self, key: str):
         return self.get_request(view='/personal-area/sort-by-title/', headers={'Authorization': f'Token {key}'})
 
-    def sort_my_recipes_by_date(self, key):
+    @typechecked
+    def sort_my_recipes_by_date(self, key: str):
         return self.get_request(view='/personal-area/sort-by-date/', headers={'Authorization': f'Token {key}'})
 
-    def filter_by_author(self, author):
+    @typechecked
+    def filter_by_author(self, author: str):
         return self.get_request(view=f'/recipes/by-author/{author}/')
 
-    def filter_by_title(self, title):
+    @typechecked
+    def filter_by_title(self, title: str):
         return self.get_request(view=f'/recipes/by-title/{title}/')
 
-    def filter_by_ingredient(self, ingredient):
+    @typechecked
+    def filter_by_ingredient(self, ingredient: str):
         return self.get_request(view=f'/recipes/by-ingredient/{ingredient}/')
 
-    def what_is_my_role(self, key):
+    @typechecked
+    def what_is_my_role(self, key: str):
         result = self.get_request(view=f'/personal-area/account-type/', headers={'Authorization': f'Token {key}'})
         if 'detail' in result:
             return result['detail']
@@ -268,13 +285,15 @@ class DealerRecipes:
             else:
                 return 'You are logged as moderator'
 
-    def update_my_recipe(self, key, index, recipe_to_change):
+    @typechecked
+    def update_my_recipe(self, key: str, index: int, recipe_to_change: dict):
         res = requests.put(url=f'{self.__api_server}/personal-area/{index}/',
                            headers={'Authorization': f'Token {key}', 'Content-Type': 'application/json'},
                            data=json.dumps(recipe_to_change))
         return res.json()
 
-    def get_request(self, view, **kwargs):
+    @typechecked
+    def get_request(self, view: str, **kwargs):
         data = kwargs['data'] if 'data' in kwargs else {}
         headers = kwargs['headers'] if 'headers' in kwargs else {}
         res = requests.get(url=f'{self.__api_server}{view}', headers=headers, data=data)
