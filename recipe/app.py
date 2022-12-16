@@ -7,12 +7,12 @@ from valid8 import ValidationError
 
 from .domain import DealerRecipes, Title, Description, Name, Quantity, Unit, Password, Username, Id
 from .domain import JsonHandler, Email
-from .menu import Menu, Entry, Description
+from .menu import Menu, Entry, Description as Description_
 
 
 class ApplicationForUser:
     def __init__(self):
-        self.__menu = Menu.Builder(Description('Secure Recipe Application from Command Line'),
+        self.__menu = Menu.Builder(Description_('Secure Recipe Application from Command Line'),
                                    auto_select=lambda: print('Welcome to Secure Recipe!')) \
             .with_entry(Entry.create('1', 'Sign up', on_selected=lambda: self.__sign_up())) \
             .with_entry(Entry.create('2', 'Login', on_selected=lambda: self.__login())) \
@@ -51,7 +51,9 @@ class ApplicationForUser:
                     line = int(line.strip())
                 res = builder(line)
                 return res
-            except (TypeError, ValueError, ValidationError) as e:
+            except ValidationError as e:
+                self.__error(f'Invalid {prompt}.\n {e.help_msg}')
+            except (TypeError, ValueError) as e:
                 self.__error(f'Invalid {prompt}.\n {e}')
 
     @typechecked

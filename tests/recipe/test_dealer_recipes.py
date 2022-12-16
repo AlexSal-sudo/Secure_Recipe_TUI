@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 import requests_mock
+
 from recipe.domain import DealerRecipes, Username, Email, Password, Title, Description, Id, Name
 
 

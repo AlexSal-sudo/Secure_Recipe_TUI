@@ -460,3 +460,13 @@ def test_sign_up_with_error(mock_input, mock_print):
                 mock_error.assert_called()
                 mock_print.assert_called()
                 mock_read.assert_called()
+
+
+@patch('builtins.input', side_effect=['1', 'usr'])
+@patch('builtins.print')
+def test_sign_up_with_error_show_help_msg(mock_input, mock_print):
+    new_app = ApplicationForUser()
+    with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
+        new_app.run()
+        mock_error.assert_called()
+        mock_print.assert_called()
