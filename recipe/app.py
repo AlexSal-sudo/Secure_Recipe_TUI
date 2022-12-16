@@ -5,9 +5,9 @@ from typing import Callable, Any
 from typeguard import typechecked
 from valid8 import ValidationError
 
-from domain import DealerRecipes, Title, Description, Name, Quantity, Unit, Password, Username, Id
-from domain import JsonHandler, Recipe, Email
-from  menu import Menu, Entry, Description
+from .domain import DealerRecipes, Title, Description, Name, Quantity, Unit, Password, Username, Id
+from .domain import JsonHandler, Email
+from .menu import Menu, Entry, Description
 
 
 class ApplicationForUser:
@@ -70,12 +70,17 @@ class ApplicationForUser:
         return self.__dealer.what_is_my_role(self.__my_key)
 
     def __sign_up(self):
-        input_username: Username= self.__read_from_input('Username', Username)
+        input_username: Username = self.__read_from_input('Username', Username)
         input_email: Email = self.__read_from_input('Email', Email)
         input_password: Password = self.__read_from_input('Password', Password, password=True)
         input_confirm_password: Password = self.__read_from_input('Password', Password, password=True)
-        result = self.__dealer.sign_up(input_username.value, input_email.value,
-                                       input_password.value, input_confirm_password.value)
+        while input_password != input_confirm_password:
+            self.__error("Please, the passwords provided must be equal")
+            input_password: Password = self.__read_from_input('Password', Password, password=True)
+            input_confirm_password: Password = self.__read_from_input('Password', Password, password=True)
+
+        result = self.__dealer.sign_up(input_username, input_email,
+                                       input_password, input_confirm_password)
         if result == 'Welcome to Secure Recipe! You are now registered as a new user.':
             print(result)
         else:
@@ -87,7 +92,7 @@ class ApplicationForUser:
             return
         input_username = self.__read_from_input('Username', Username)
         input_password = self.__read_from_input('Password', Password, password=True)
-        result = self.__dealer.login(input_username.value, input_password.value)
+        result = self.__dealer.login(input_username, input_password)
         if result is None:
             self.__error('Incorrect login credentials.')
         else:
@@ -109,7 +114,7 @@ class ApplicationForUser:
         input_title = self.__read_from_input('Title', Title)
         input_description = self.__read_from_input('Description', Description)
         ingredients = self.__read_ingredients_from_input()
-        result = self.__dealer.add_new_recipe(self.__my_key, input_title.value, input_description.value, ingredients)
+        result = self.__dealer.add_new_recipe(self.__my_key, input_title, input_description, ingredients)
         self.__print_result_from_request(result)
 
     def __delete_recipe(self):
@@ -117,7 +122,7 @@ class ApplicationForUser:
             self.__error('You can not perform this action without login.')
             return
         input_id = self.__read_from_input('Id', Id, to_convert=True)
-        result = self.__dealer.delete_recipe(self.__my_key, input_id.id)
+        result = self.__dealer.delete_recipe(self.__my_key, input_id)
         if result == 'The recipe is cancelled!':
             print(result)
         else:
@@ -129,7 +134,7 @@ class ApplicationForUser:
 
     def __show_specific_recipe(self):
         input_id: Id = self.__read_from_input('Id', Id, to_convert=True)
-        result = self.__dealer.show_specific_recipe(input_id.id)
+        result = self.__dealer.show_specific_recipe(input_id)
         self.__print_result_from_request(result)
 
     def __sort_by_title(self):
@@ -150,17 +155,17 @@ class ApplicationForUser:
 
     def __filter_by_author(self):
         input_author: Username = self.__read_from_input('Username', Username)
-        result = self.__dealer.filter_by_author(input_author.value)
+        result = self.__dealer.filter_by_author(input_author)
         self.__print_result_from_request(result)
 
     def __filter_by_title(self):
         input_title: Title = self.__read_from_input('Title', Title)
-        result = self.__dealer.filter_by_title(input_title.value)
+        result = self.__dealer.filter_by_title(input_title)
         self.__print_result_from_request(result)
 
     def __filter_by_ingredient(self):
         input_ingredient_name: Name = self.__read_from_input('Name', Name)
-        result = self.__dealer.filter_by_ingredient(input_ingredient_name.value)
+        result = self.__dealer.filter_by_ingredient(input_ingredient_name)
         self.__print_result_from_request(result)
 
     def __update_my_recipe(self):
@@ -168,13 +173,11 @@ class ApplicationForUser:
             self.__error('You can not perform this action without login.')
             return
         input_id_to_change: Id = self.__read_from_input('Id', Id, to_convert=True)
-        recipe_to_change = self.__dealer.show_specific_recipe(input_id_to_change.id)
+        recipe_to_change = self.__dealer.show_specific_recipe(input_id_to_change)
         if 'detail' in recipe_to_change:
             self.__error(recipe_to_change['detail'])
             return
         JsonHandler.create_recipe_from_json(recipe_to_change).print()
-        title_to_change, description_to_change = '', ''
-        ingredients_to_change = []
         print('If you want to do something digit "y", otherwise digit "n".')
         if self.__read_yes_or_not_from_input('Do you want to change the title?') == 'y':
             recipe_to_change['title'] = self.__read_from_input('Title', Title).value
@@ -182,7 +185,7 @@ class ApplicationForUser:
             recipe_to_change['description'] = self.__read_from_input('Description', Description).value
         if self.__read_yes_or_not_from_input('Do you want to change the ingredients?') == 'y':
             recipe_to_change['ingredients'] = self.__read_ingredients_from_input()
-        result = self.__dealer.update_my_recipe(self.__my_key, input_id_to_change.id, recipe_to_change)
+        result = self.__dealer.update_my_recipe(self.__my_key, input_id_to_change, recipe_to_change)
         self.__print_result_from_request(result)
 
     def __read_ingredients_from_input(self):

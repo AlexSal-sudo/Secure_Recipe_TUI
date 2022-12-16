@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 import requests_mock
-from recipe.domain import DealerRecipes
+from recipe.domain import DealerRecipes, Username, Email, Password, Title, Description, Id, Name
 
 
 @pytest.fixture
@@ -20,25 +20,25 @@ def key_for_tests():
     return data
 
 
-def check_data_for_login_json(username, password, data_for_login):
+def check_data_for_login_json(username: Username, password: Password, data_for_login):
     for data in data_for_login:
-        if data[0] == username and data[1] == password:
+        if data[0] == username.value and data[1] == password.value:
             return {
                 'key': 'fake_token_provided'
             }
         return {}
 
 
-def check_data_for_login_status_code(username, password, data_for_login):
+def check_data_for_login_status_code(username: Username, password: Password, data_for_login):
     for data in data_for_login:
-        if data[0] == username and data[1] == password:
+        if data[0] == username.value and data[1] == password.value:
             return 200
         return 400
 
 
 @pytest.mark.parametrize('username, password, result', [
-    ('username1', 'password1', 'fake_token_provided'),
-    ('username3', 'password3', None)
+    (Username('username1'), Password('password1'), 'fake_token_provided'),
+    (Username('username3'), Password('password3'), None)
 ])
 def test_login(username, password, result, data_for_login):
     with requests_mock.Mocker() as m:
@@ -61,8 +61,8 @@ def test_logout(key, result, key_for_tests):
 
 
 @pytest.mark.parametrize('key, index, status_code, json, result', [
-    ('my_fake_token', 1, 400, {'detail': 'testing'}, 'testing'),
-    ('my_fake_token', 2, 204, {}, 'The recipe is cancelled!')
+    ('my_fake_token', Id(1), 400, {'detail': 'testing'}, 'testing'),
+    ('my_fake_token', Id(2), 204, {}, 'The recipe is cancelled!')
 ])
 def test_delete_recipe(key, index, status_code, json, result):
     with requests_mock.Mocker() as m:
@@ -103,7 +103,7 @@ def test_wrong_show_all_recipe():
 
 
 @pytest.mark.parametrize('index, status_code, my_result', [
-    (1, 200, {
+    (Id(1), 200, {
         'id': 1,
         'author': 'author1',
         'title': 'title1',
@@ -116,17 +116,17 @@ def test_wrong_show_all_recipe():
         'created_at': '2022-12-01',
         'updated_at': '2022-12-01',
     }),
-    (2, 400, {})
+    (Id(2), 400, {})
 ])
 def test_show_specific_recipe(index, status_code, my_result, key_for_tests):
     with requests_mock.Mocker() as m:
         my_dealer = DealerRecipes()
-        m.get(f'http://localhost:8000/api/v1/recipes/{index}/', json=my_result, status_code=status_code)
+        m.get(f'http://localhost:8000/api/v1/recipes/{index.id}/', json=my_result, status_code=status_code)
         assert my_dealer.show_specific_recipe(index) == my_result
 
 
 @pytest.mark.parametrize('key, title, description, ingredients, result', [
-    ('my_fake_token', 'title1', 'description1', [{'name': 'ingredientOne', 'quantity': 1, 'unit': 'n/a'}], {
+    ('my_fake_token', Title('title'), Description('description1'), [{'name': 'ingredientOne', 'quantity': 1, 'unit': 'n/a'}], {
         'id': 1,
         'author': 'author1',
         'title': 'title1',
@@ -139,7 +139,7 @@ def test_show_specific_recipe(index, status_code, my_result, key_for_tests):
         'created_at': '2022-12-01T15:15:12.376396Z',
         'updated_at': '2022-12-01T15:15:12.376396Z',
     }),
-    ('my_fake_token', 'title1', 'description1', [{'name': 'ingredientOne', 'quantity': '1', 'unit': 'k'}],
+    ('my_fake_token', Title('title'), Description('description1'), [{'name': 'ingredientOne', 'quantity': '1', 'unit': 'k'}],
      {'ingredients': [" '2' is not a number"]})
 ])
 def test_add_new_recipe(key, title, description, ingredients, result):
@@ -298,35 +298,35 @@ def test_sort_my_recipes_by_date(my_result, key_for_tests):
 
 
 @pytest.mark.parametrize('author, result', [
-    ('authorA', {'detail': 'testing'}),
-    ('authorB', {'detail': 'testing'})
+    (Username('authorA'), {'detail': 'testing'}),
+    (Username('authorB'), {'detail': 'testing'})
 ])
 def test_filter_by_author(author, result):
     with requests_mock.Mocker() as m:
         my_dealer = DealerRecipes()
-        m.get(f'http://localhost:8000/api/v1/recipes/by-author/{author}/', json=result)
+        m.get(f'http://localhost:8000/api/v1/recipes/by-author/{author.value}/', json=result)
         assert my_dealer.filter_by_author(author) == result
 
 
 @pytest.mark.parametrize('title, result', [
-    ('titleA', {'detail': 'testing'}),
-    ('titleB', {'detail': 'testing'})
+    (Title('titleA'), {'detail': 'testing'}),
+    (Title('titleB'), {'detail': 'testing'})
 ])
 def test_filter_by_title(title, result):
     with requests_mock.Mocker() as m:
         my_dealer = DealerRecipes()
-        m.get(f'http://localhost:8000/api/v1/recipes/by-title/{title}/', json=result)
+        m.get(f'http://localhost:8000/api/v1/recipes/by-title/{title.value}/', json=result)
         assert my_dealer.filter_by_title(title) == result
 
 
 @pytest.mark.parametrize('ingredient, result', [
-    ('ingredientA', {'detail': 'testing'}),
-    ('ingredientB', {'detail': 'testing'})
+    (Name('ingredientA'), {'detail': 'testing'}),
+    (Name('ingredientB'), {'detail': 'testing'})
 ])
 def test_filter_by_ingredient(ingredient, result):
     with requests_mock.Mocker() as m:
         my_dealer = DealerRecipes()
-        m.get(f'http://localhost:8000/api/v1/recipes/by-ingredient/{ingredient}/', json=result)
+        m.get(f'http://localhost:8000/api/v1/recipes/by-ingredient/{ingredient.value}/', json=result)
         assert my_dealer.filter_by_ingredient(ingredient) == result
 
 
@@ -363,16 +363,17 @@ def test_what_is_my_role(key, returned_json, result):
 
 
 @pytest.mark.parametrize('key, index, my_json, result',
-                         [('token', 10, {'testing': 'testing'}, {'detail': 'testing'})])
+                         [('token', Id(10), {'testing': 'testing'}, {'detail': 'testing'})])
 def test_update_my_recipes(key, index, my_json, result):
     with requests_mock.Mocker() as m:
         my_dealer = DealerRecipes()
-        m.put(f'http://localhost:8000/api/v1/personal-area/{index}/', json={'detail': 'testing'})
+        m.put(f'http://localhost:8000/api/v1/personal-area/{index.id}/', json={'detail': 'testing'})
         assert my_dealer.update_my_recipe(key, index, my_json) == result
 
 
 @pytest.mark.parametrize('username, email, password1, password2, result',
-                         [('username', 'email@email.email', 'password1', 'password2',
+                         [(Username('username'), Email('email@email.email'), Password('password1'),
+                           Password('password2'),
                            'Welcome to Secure Recipe! You are now registered as a new user.')])
 def test_sign_up_right(username, email, password1, password2, result):
     with requests_mock.Mocker() as m:
@@ -382,7 +383,8 @@ def test_sign_up_right(username, email, password1, password2, result):
 
 
 @pytest.mark.parametrize('username, email, password1, password2, result',
-                         [('username', 'email', 'password1', 'password2', {'email': 'email not valid'})])
+                         [(Username('username'), Email('email@email.email'), Password('password1'),
+                           Password('password2'), {'email': 'email not valid'})])
 def test_sign_up_wrong(username, email, password1, password2, result):
     with requests_mock.Mocker() as m:
         my_dealer = DealerRecipes()

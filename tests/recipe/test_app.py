@@ -1,7 +1,11 @@
 from datetime import date
+from getpass import getpass
 
 import pytest
 from unittest.mock import patch
+
+from valid8 import ValidationError
+
 from recipe.app import ApplicationForUser, main
 
 from recipe.domain import DealerRecipes, Username, Title, Description, Name, Quantity, Unit, Password, Id, JsonHandler, \
@@ -447,7 +451,8 @@ def test_sign_up_with_error(mock_input, mock_print):
     new_app = ApplicationForUser()
     with patch.object(ApplicationForUser, '_ApplicationForUser__read_from_input',
                       side_effect=[Username('username'), Email('secure.softare@gmail.com'),
-                                   Password('password1234'), Password('password12345')]) as mock_read:
+                                   Password('password1234'), Password('password12345'), Password('password1234'),
+                                   Password('password1234')]) as mock_read:
         with patch.object(DealerRecipes, 'sign_up',
                           return_value={'detail': 'error_testing'}):
             with patch.object(ApplicationForUser, '_ApplicationForUser__error') as mock_error:
